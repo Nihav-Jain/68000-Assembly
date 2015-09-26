@@ -9,17 +9,6 @@
 START   ORG     $1000
 
 *-------------------
-* Bitmap file descriptors
-*-------------------
-BitmapData      INCBIN "TenByTenBMP.bmp"
-ImageDataOffset EQU    (BitmapData+10)
-ImageWidth      EQU    (ImageDataOffset+8)
-ImageHeight     EQU    (ImageWidth+4)
-BitsPerPixel    EQU    (ImageHeight+6)
-ImageSize       EQU    (BitsPerPixel+6)
-NumOfColors     EQU    (ImageSize+12)
-
-*-------------------
 * Coordinates of the top-left corner, width, height of the bitmap rectangle to be drawn
 *-------------------
 START_X         EQU     0
@@ -35,7 +24,46 @@ CMD_DRAW_PIXEL  EQU     82
 CMD_OUTPUT_RES  EQU     33
 CMD_CLEAR_SCREEN    EQU 11
 
+*-------------------
+* a0 : address of image data
+* d1 : trap code requirements
+* d2 : Y coordinate
+* d3 : X coordinate
+* d4 : image width
+* d5 : image height
+* d6 : pixel offset
+*-------------------
 
+        move.l  ImageDataOffset, d5     ; precondition for byte swapping subroutine
+        JSR     SR_SWAP_LONG
+        lea     BitmapData, a0
+        adda.l  d5, a0                  ; adding image data offset to bitmap data start address, a0 now points to the image data
+        
+        move.l  #START_X, d3
+        move.l  #START_Y, d2
+
+        move.l  ImageWidth, d5
+        JSR     SR_SWAP_LONG
+        move.l  d5, d4
+        move.l  ImageHeight, d5
+        JSR     SR_SWAP_LONG
+        
+CONTINUE_ROW:
+        move.l  d3, d7
+        mulu    #3, d7      ; x offset (column offset)
+        move.l  d2, d6
+        mulu    d4, d6      ; y offset (row offset)
+        add.l   d7, d6
+        
+        clr.l   d1
+        move.b  (a0, d6), d1
+        swap    d1
+        move.b  1(a0, d6), d1
+        lsl.b   #8, d1
+        move.b  2(a0, d6), d1
+        move.l  #CMD_PEN_COLOR, d0
+        TRAP    #15
+        
         move.b  $9,d0
         TRAP #15
         
@@ -62,6 +90,17 @@ SR_SWAP_LONG:
         RTS
 
         STOP #$2000
+*-------------------
+* Bitmap file descriptors
+*-------------------
+BitmapData      INCBIN "TenByTenBMP.bmp"
+ImageDataOffset EQU    (BitmapData+10)      ; LONG
+ImageWidth      EQU    (ImageDataOffset+8)  ; LONG
+ImageHeight     EQU    (ImageWidth+4)       ; LONG
+BitsPerPixel    EQU    (ImageHeight+6)      ; WORD
+ImageSize       EQU    (BitsPerPixel+6)     ; LONG
+NumOfColors     EQU    (ImageSize+12)       ; LONG
+
         END     START
         
 *~Font name~Courier New~
