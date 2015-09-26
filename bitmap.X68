@@ -11,10 +11,10 @@ START   ORG     $1000
 *-------------------
 * Coordinates of the top-left corner, width, height of the bitmap rectangle to be drawn
 *-------------------
-START_X         EQU     25
-START_Y         EQU     25
-WIDTH_TO_DRAW   EQU     50
-HEIGHT_TO_DRAW  EQU     50
+START_X         EQU     0
+START_Y         EQU     0
+WIDTH_TO_DRAW   EQU     100
+HEIGHT_TO_DRAW  EQU     100
 END_X           EQU     (START_X+WIDTH_TO_DRAW)
 END_Y           EQU     (START_Y+HEIGHT_TO_DRAW)
 
@@ -47,6 +47,7 @@ CMD_CLEAR_SCREEN    EQU 11
 
         move.l  ImageWidth, d5
         JSR     SR_SWAP_LONG
+        addi.l  #2, d5
         *move.l  d5, d4
         *move.l  ImageHeight, d5
         *JSR     SR_SWAP_LONG
@@ -60,11 +61,18 @@ CMD_CLEAR_SCREEN    EQU 11
 
 CONTINUE_ROW:
         clr.l   d1
+*        move.b  2(a0, d6), d1
+*        swap    d1
+*        move.b  1(a0, d6), d1
+*        lsl.w   #8, d1
+*        move.b  (a0, d6), d1
+        
         move.b  (a0, d6), d1
         swap    d1
         move.b  1(a0, d6), d1
-        lsl.b   #8, d1
+        lsl.w   #8, d1
         move.b  2(a0, d6), d1
+        
 
         move.l  #CMD_PEN_COLOR, d0
         TRAP    #15
@@ -127,6 +135,7 @@ NumOfColors     EQU    (ImageSize+12)       ; LONG
 
         END     START
         
+
 *~Font name~Courier New~
 *~Font size~14~
 *~Tab type~1~
