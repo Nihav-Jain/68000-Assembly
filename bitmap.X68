@@ -11,10 +11,12 @@ START   ORG     $1000
 *-------------------
 * Coordinates of the top-left corner, width, height of the bitmap rectangle to be drawn
 *-------------------
-START_X         EQU     0
-START_Y         EQU     0
-WIDTH_TO_DRAW   EQU     10
-HEIGHT_TO_DRAW  EQU     10
+START_X         EQU     25
+START_Y         EQU     25
+WIDTH_TO_DRAW   EQU     50
+HEIGHT_TO_DRAW  EQU     50
+END_X           EQU     (START_X+WIDTH_TO_DRAW)
+END_Y           EQU     (START_Y+HEIGHT_TO_DRAW)
 
 *-------------------
 * Trap codes
@@ -30,8 +32,9 @@ CMD_CLEAR_SCREEN    EQU 11
 * d2 : Y coordinate
 * d3 : X coordinate
 * d4 : image width
-* d5 : image height
+* d5 : image width
 * d6 : pixel offset
+* d7 : offset of the number of bytes in a row
 *-------------------
 
         move.l  ImageDataOffset, d5     ; precondition for byte swapping subroutine
@@ -44,29 +47,50 @@ CMD_CLEAR_SCREEN    EQU 11
 
         move.l  ImageWidth, d5
         JSR     SR_SWAP_LONG
-        move.l  d5, d4
-        move.l  ImageHeight, d5
-        JSR     SR_SWAP_LONG
-        
-CONTINUE_ROW:
+        *move.l  d5, d4
+        *move.l  ImageHeight, d5
+        *JSR     SR_SWAP_LONG
+
         move.l  d3, d7
         mulu    #3, d7      ; x offset (column offset)
-        move.l  d2, d6
-        mulu    d4, d6      ; y offset (row offset)
-        add.l   d7, d6
-        
+        move.l  d5, d4
+        mulu    d2, d4
+        move.l  d4, d6      ; y offset (row offset)
+        add.l   d7, d6        
+
+CONTINUE_ROW:
         clr.l   d1
         move.b  (a0, d6), d1
         swap    d1
         move.b  1(a0, d6), d1
         lsl.b   #8, d1
         move.b  2(a0, d6), d1
+
         move.l  #CMD_PEN_COLOR, d0
         TRAP    #15
+        
+        move.l  d3, d1
+        move.l  #CMD_DRAW_PIXEL, d0
+        TRAP    #15
+        
+        addi.l  #1, d3
+        addi.l  #3, d6
+        
+        cmp.l   #END_X, d3
+        blt     CONTINUE_ROW
+        
+        add.l   d5, d4
+        move.l  d4, d6      ; y offset (row offset)
+        add.l   d7, d6
+        move.l  #START_X, d3        
+        addi.l  #1, d2
+        cmp.l   #END_Y, d2
+        blt     CONTINUE_ROW
         
         move.b  $9,d0
         TRAP #15
         
+        STOP #$2000
 *-------------------
 * Subroutine: Swaps the bytes of the lower word in d5
 * Uses      : d5, d6 
@@ -89,11 +113,11 @@ SR_SWAP_LONG:
         JSR     SR_SWAP_WORD
         RTS
 
-        STOP #$2000
+
 *-------------------
 * Bitmap file descriptors
 *-------------------
-BitmapData      INCBIN "TenByTenBMP.bmp"
+BitmapData      INCBIN "HundredSingleColor.bmp"
 ImageDataOffset EQU    (BitmapData+10)      ; LONG
 ImageWidth      EQU    (ImageDataOffset+8)  ; LONG
 ImageHeight     EQU    (ImageWidth+4)       ; LONG
