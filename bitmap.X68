@@ -11,12 +11,6 @@ START   ORG     $1000
 *-------------------
 * Coordinates of the top-left corner, width, height of the bitmap rectangle to be drawn
 *-------------------
-START_X         EQU     0
-START_Y         EQU     0
-WIDTH_TO_DRAW   EQU     100
-HEIGHT_TO_DRAW  EQU     100
-END_X           EQU     (START_X+WIDTH_TO_DRAW)
-END_Y           EQU     (START_Y+HEIGHT_TO_DRAW)
 
 *-------------------
 * Trap codes
@@ -45,12 +39,16 @@ CMD_CLEAR_SCREEN    EQU 11
         move.l  #START_X, d3
         move.l  #START_Y, d2
 
+        move.l  ImageHeight, d5
+        JSR     SR_SWAP_LONG
+        move.l  d5, d2
+        subi.l  #START_Y, d2
+        
         move.l  ImageWidth, d5
         JSR     SR_SWAP_LONG
         addi.l  #2, d5
+        mulu    #3, d5
         *move.l  d5, d4
-        *move.l  ImageHeight, d5
-        *JSR     SR_SWAP_LONG
 
         move.l  d3, d7
         mulu    #3, d7      ; x offset (column offset)
@@ -58,14 +56,10 @@ CMD_CLEAR_SCREEN    EQU 11
         mulu    d2, d4
         move.l  d4, d6      ; y offset (row offset)
         add.l   d7, d6        
+        move.l  #START_Y, d2
 
 CONTINUE_ROW:
         clr.l   d1
-*        move.b  2(a0, d6), d1
-*        swap    d1
-*        move.b  1(a0, d6), d1
-*        lsl.w   #8, d1
-*        move.b  (a0, d6), d1
         
         move.b  (a0, d6), d1
         swap    d1
@@ -73,7 +67,6 @@ CONTINUE_ROW:
         lsl.w   #8, d1
         move.b  2(a0, d6), d1
         
-
         move.l  #CMD_PEN_COLOR, d0
         TRAP    #15
         
@@ -87,7 +80,7 @@ CONTINUE_ROW:
         cmp.l   #END_X, d3
         blt     CONTINUE_ROW
         
-        add.l   d5, d4
+        sub.l   d5, d4
         move.l  d4, d6      ; y offset (row offset)
         add.l   d7, d6
         move.l  #START_X, d3        
@@ -125,7 +118,17 @@ SR_SWAP_LONG:
 *-------------------
 * Bitmap file descriptors
 *-------------------
-BitmapData      INCBIN "HundredSingleColor.bmp"
+START_X         EQU     0
+START_Y         EQU     0
+WIDTH_TO_DRAW   EQU     512
+HEIGHT_TO_DRAW  EQU     512
+END_X           EQU     (START_X+WIDTH_TO_DRAW)
+END_Y           EQU     (START_Y+HEIGHT_TO_DRAW)
+*BitmapData      INCBIN "lena.bmp"
+*BitmapData      INCBIN "HundredSingleColor.bmp"
+*BitmapData      INCBIN "HundredTwoColors.bmp"
+BitmapData      INCBIN "SixBySixTwoColors.bmp"
+*BitmapData      INCBIN "TenByTenBMP.bmp"
 ImageDataOffset EQU    (BitmapData+10)      ; LONG
 ImageWidth      EQU    (ImageDataOffset+8)  ; LONG
 ImageHeight     EQU    (ImageWidth+4)       ; LONG
@@ -135,6 +138,7 @@ NumOfColors     EQU    (ImageSize+12)       ; LONG
 
         END     START
         
+
 
 *~Font name~Courier New~
 *~Font size~14~
