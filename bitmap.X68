@@ -9,18 +9,6 @@
 START   ORG     $1000
 
 *-------------------
-* Coordinates of the top-left corner, width, height of the bitmap rectangle to be drawn
-*-------------------
-
-*-------------------
-* Trap codes
-*-------------------
-CMD_PEN_COLOR   EQU     80
-CMD_DRAW_PIXEL  EQU     82
-CMD_OUTPUT_RES  EQU     33
-CMD_CLEAR_SCREEN    EQU 11
-
-*-------------------
 * a0 : address of image data
 * d1 : trap code requirements
 * d2 : Y coordinate
@@ -70,11 +58,13 @@ CMD_CLEAR_SCREEN    EQU 11
 CONTINUE_ROW:
         clr.l   d1
         
-        move.b  (a0, d6), d1
+        add.l   d6, a0
+        move.b  (a0), d1
         swap    d1
-        move.b  1(a0, d6), d1
+        move.b  1(a0), d1
         lsl.w   #8, d1
-        move.b  2(a0, d6), d1
+        move.b  2(a0), d1
+        sub.l   d6, a0
         
         move.l  #CMD_PEN_COLOR, d0
         TRAP    #15
@@ -100,7 +90,7 @@ CONTINUE_ROW:
         move.b  $9,d0
         TRAP #15
         
-        STOP #$2000
+        STOP #$F000
 *-------------------
 * Subroutine: Swaps the bytes of the lower word in d5
 * Uses      : d5, d6 
@@ -123,17 +113,30 @@ SR_SWAP_LONG:
         JSR     SR_SWAP_WORD
         RTS
 
+*-------------------
+* Coordinates of the top-left corner, width, height of the bitmap rectangle to be drawn
+*-------------------
+START_X             EQU     0
+START_Y             EQU     0
+WIDTH_TO_DRAW       EQU     120
+HEIGHT_TO_DRAW      EQU     120
+END_X               EQU     (START_X+WIDTH_TO_DRAW)
+END_Y               EQU     (START_Y+HEIGHT_TO_DRAW)
+
+*-------------------
+* Trap codes
+*-------------------
+CMD_PEN_COLOR       EQU     80
+CMD_DRAW_PIXEL      EQU     82
+CMD_OUTPUT_RES      EQU     33
+CMD_CLEAR_SCREEN    EQU     11
 
 *-------------------
 * Bitmap file descriptors
 *-------------------
-START_X         EQU     0
-START_Y         EQU     0
-WIDTH_TO_DRAW   EQU     100
-HEIGHT_TO_DRAW  EQU     100
-END_X           EQU     (START_X+WIDTH_TO_DRAW)
-END_Y           EQU     (START_Y+HEIGHT_TO_DRAW)
-BitmapData      INCBIN "me.bmp"
+BitmapData      INCBIN "MultiColor_120x120.bmp"
+*BitmapData      INCBIN "tiger.bmp"
+*BitmapData      INCBIN "me.bmp"
 *BitmapData      INCBIN "HundredSingleColor.bmp"
 *BitmapData      INCBIN "HundredTwoColors.bmp"
 *BitmapData      INCBIN "SixBySixTwoColors.bmp"
@@ -149,6 +152,7 @@ NumOfColors     EQU    (ImageSize+12)       ; LONG
         
 
         
+
 
 *~Font name~Courier New~
 *~Font size~14~
