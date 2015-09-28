@@ -67,13 +67,11 @@ START   ORG     $1000
 CONTINUE_ROW:
         clr.l   d1
         
-        add.l   d6, a0                  ; adding offset to image data pointer [addressing mode (a0, d6) works only for d6 values from 128 to -127 !!!]      
-        move.b  (a0), d1                ; #$000000BB
+        move.b  (a0, d6.l), d1          ; #$000000BB
         swap    d1                      ; #$00BB0000
-        move.b  1(a0), d1               ; #$00BB00GG
+        move.b  1(a0, d6.l), d1         ; #$00BB00GG
         lsl.w   #8, d1                  ; #$00BBGG00
-        move.b  2(a0), d1               ; #$00BBGGRR
-        sub.l   d6, a0
+        move.b  2(a0, d6.l), d1         ; #$00BBGGRR
         
         move.l  #CMD_PEN_COLOR, d0
         TRAP    #15
@@ -155,6 +153,7 @@ NumOfColors         EQU     (ImageSize+12)       ; LONG
         
 
         
+
 
 
 *~Font name~Courier New~
