@@ -39,17 +39,26 @@ CMD_CLEAR_SCREEN    EQU 11
         move.l  #START_X, d3
         move.l  #START_Y, d2
 
+        move.l  BitsPerPixel, d5
+        JSR     SR_SWAP_LONG
+        move.l  d5, d7
+        
         move.l  ImageHeight, d5
         JSR     SR_SWAP_LONG
         move.l  d5, d2
         subi.l  #START_Y, d2
+        subi.l  #1, d2
         
         move.l  ImageWidth, d5
         JSR     SR_SWAP_LONG
-        addi.l  #2, d5
+        mulu    d5, d7
+        addi.l  #31, d7
+        divu    #32, d7
+        mulu    #4, d7
         mulu    #3, d5
-        *move.l  d5, d4
-
+        sub.l   d5, d7        
+        add.l   d7, d5
+        
         move.l  d3, d7
         mulu    #3, d7      ; x offset (column offset)
         move.l  d5, d4
@@ -120,14 +129,14 @@ SR_SWAP_LONG:
 *-------------------
 START_X         EQU     0
 START_Y         EQU     0
-WIDTH_TO_DRAW   EQU     512
-HEIGHT_TO_DRAW  EQU     512
+WIDTH_TO_DRAW   EQU     100
+HEIGHT_TO_DRAW  EQU     100
 END_X           EQU     (START_X+WIDTH_TO_DRAW)
 END_Y           EQU     (START_Y+HEIGHT_TO_DRAW)
-*BitmapData      INCBIN "lena.bmp"
+BitmapData      INCBIN "me.bmp"
 *BitmapData      INCBIN "HundredSingleColor.bmp"
 *BitmapData      INCBIN "HundredTwoColors.bmp"
-BitmapData      INCBIN "SixBySixTwoColors.bmp"
+*BitmapData      INCBIN "SixBySixTwoColors.bmp"
 *BitmapData      INCBIN "TenByTenBMP.bmp"
 ImageDataOffset EQU    (BitmapData+10)      ; LONG
 ImageWidth      EQU    (ImageDataOffset+8)  ; LONG
@@ -139,6 +148,7 @@ NumOfColors     EQU    (ImageSize+12)       ; LONG
         END     START
         
 
+        
 
 *~Font name~Courier New~
 *~Font size~14~
