@@ -3,7 +3,7 @@
 * Written by    : Nihav Jain
 * Date Created  : 09/26/2015
 * Description   : Display the specified part of a bitmap
-*
+* Bitmap Type   : True color, 24 bit color, no compression
 *-----------------------------------------------------------
 
 START   ORG     $1000
@@ -13,8 +13,8 @@ START   ORG     $1000
 * d1 : trap code requirements
 * d2 : Y coordinate
 * d3 : X coordinate
-* d4 : image width
-* d5 : image width
+* d4 : byte offset of current row in image data
+* d5 : number of bytes per row
 * d6 : pixel offset
 * d7 : offset of the number of bytes in a row
 *-------------------
@@ -29,41 +29,50 @@ START   ORG     $1000
 
         move.l  BitsPerPixel, d5
         JSR     SR_SWAP_LONG
-        move.l  d5, d7
+        move.l  d5, d7                  ; required for calculatiung the number of garbage bytes at the end of each row
         
         move.l  ImageHeight, d5
         JSR     SR_SWAP_LONG
         move.l  d5, d2
+        
+    *-------------------
+    * Image data in BMP is inverted 
+    * i.e. the last row of data corresponds to the first row of the actual image
+    * where Row[y] = (ImageHeight - y - 1) // for Row[0...ImageHeight-1]
+    *-------------------
         subi.l  #START_Y, d2
         subi.l  #1, d2
         
         move.l  ImageWidth, d5
         JSR     SR_SWAP_LONG
+        
+    *-------------------
+    * BMP image data  have garbage bytes at the end of each row
+    * Number of bytes per row (incl. garbage) = Math.floor((BitsPerPixel*ImageWidth + 31)/32) * 4
+    *-------------------
         mulu    d5, d7
         addi.l  #31, d7
         divu    #32, d7
         mulu    #4, d7
-        mulu    #3, d5
-        sub.l   d5, d7        
-        add.l   d7, d5
+        move.l  d7, d5
         
         move.l  d3, d7
-        mulu    #3, d7      ; x offset (column offset)
+        mulu    #3, d7                  ; x (column) offset (in bytes) (3 corresponds to 24bits per pixel)
         move.l  d5, d4
-        mulu    d2, d4
-        move.l  d4, d6      ; y offset (row offset)
-        add.l   d7, d6        
+        mulu    d2, d4                  ; y offset (row offset)
+        move.l  d4, d6      
+        add.l   d7, d6                  ; offset (in bytes) of pixel to be drawn from the image data
         move.l  #START_Y, d2
 
 CONTINUE_ROW:
         clr.l   d1
         
-        add.l   d6, a0
-        move.b  (a0), d1
-        swap    d1
-        move.b  1(a0), d1
-        lsl.w   #8, d1
-        move.b  2(a0), d1
+        add.l   d6, a0                  ; adding offset to image data pointer [addressing mode (a0, d6) works only for d6 values from 128 to -127 !!!]      
+        move.b  (a0), d1                ; #$000000BB
+        swap    d1                      ; #$00BB0000
+        move.b  1(a0), d1               ; #$00BB00GG
+        lsl.w   #8, d1                  ; #$00BBGG00
+        move.b  2(a0), d1               ; #$00BBGGRR
         sub.l   d6, a0
         
         move.l  #CMD_PEN_COLOR, d0
@@ -73,16 +82,16 @@ CONTINUE_ROW:
         move.l  #CMD_DRAW_PIXEL, d0
         TRAP    #15
         
-        addi.l  #1, d3
+        addi.l  #1, d3                  ; increment X coordinate
         addi.l  #3, d6
         
         cmp.l   #END_X, d3
         blt     CONTINUE_ROW
         
-        sub.l   d5, d4
-        move.l  d4, d6      ; y offset (row offset)
+        sub.l   d5, d4                  ; update row pointer to to previous row (current = current - NumBytesPerRow)
+        move.l  d4, d6                  
         add.l   d7, d6
-        move.l  #START_X, d3        
+        move.l  #START_X, d3            ; reset X coordinate
         addi.l  #1, d2
         cmp.l   #END_Y, d2
         blt     CONTINUE_ROW
@@ -134,19 +143,13 @@ CMD_CLEAR_SCREEN    EQU     11
 *-------------------
 * Bitmap file descriptors
 *-------------------
-BitmapData      INCBIN "MultiColor_120x120.bmp"
-*BitmapData      INCBIN "tiger.bmp"
-*BitmapData      INCBIN "me.bmp"
-*BitmapData      INCBIN "HundredSingleColor.bmp"
-*BitmapData      INCBIN "HundredTwoColors.bmp"
-*BitmapData      INCBIN "SixBySixTwoColors.bmp"
-*BitmapData      INCBIN "TenByTenBMP.bmp"
-ImageDataOffset EQU    (BitmapData+10)      ; LONG
-ImageWidth      EQU    (ImageDataOffset+8)  ; LONG
-ImageHeight     EQU    (ImageWidth+4)       ; LONG
-BitsPerPixel    EQU    (ImageHeight+6)      ; WORD
-ImageSize       EQU    (BitsPerPixel+6)     ; LONG
-NumOfColors     EQU    (ImageSize+12)       ; LONG
+BitmapData          INCBIN  "MultiColor_120x120.bmp"
+ImageDataOffset     EQU     (BitmapData+10)      ; LONG
+ImageWidth          EQU     (ImageDataOffset+8)  ; LONG
+ImageHeight         EQU     (ImageWidth+4)       ; LONG
+BitsPerPixel        EQU     (ImageHeight+6)      ; WORD
+ImageSize           EQU     (BitsPerPixel+6)     ; LONG
+NumOfColors         EQU     (ImageSize+12)       ; LONG
 
         END     START
         
