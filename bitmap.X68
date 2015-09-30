@@ -22,10 +22,11 @@ START   ORG     $1000
         move.l  BitsPerPixel, d5
         JSR     SR_SWAP_LONG
         move.l  d5, d7
-        move.l  d5, -(sp)                  ; required for calculatiung the number of garbage bytes at the end of each row
+        move.l  d5, -(sp)               ; required for calculatiung the number of garbage bytes at the end of each row
         
         move.l  ImageHeight, d5
         JSR     SR_SWAP_LONG
+        move.l  d5, d4
         move.l  d5, -(sp)
         
     *-------------------
@@ -39,36 +40,25 @@ START   ORG     $1000
         divu    #32, d7
         mulu    #4, d7
         move.l  d7, -(sp)
-
-
+        
+        move.l  #0, d3
+    DRAW_ROWS:
+        move.l  d3, d2
+    NEXT_ALTERNATE_ROW:
         move.l  #0, -(sp)
-        move.l  #0, -(sp)
-        move.l  #160, -(sp)
-        move.l  #120, -(sp)
+        move.l  d2, -(sp)
+        move.l  d5, -(sp)
+        move.l  d2, -(sp)
         JSR     SR_DRAW_CLIP_RECTANGLE
         add.l   #16, sp
-
-        move.l  #160, -(sp)
-        move.l  #0, -(sp)
-        move.l  #320, -(sp)
-        move.l  #120, -(sp)
-        JSR     SR_DRAW_CLIP_RECTANGLE
-        add.l   #16, sp
-
-        move.l  #0, -(sp)
-        move.l  #120, -(sp)
-        move.l  #160, -(sp)
-        move.l  #240, -(sp)
-        JSR     SR_DRAW_CLIP_RECTANGLE
-        add.l   #16, sp
-
-        move.l  #160, -(sp)
-        move.l  #120, -(sp)
-        move.l  #320, -(sp)
-        move.l  #240, -(sp)
-        JSR     SR_DRAW_CLIP_RECTANGLE
-        add.l   #16, sp
-
+        addi.l  #2, d2
+        cmp.l   d4, d2
+        blt     NEXT_ALTERNATE_ROW
+        
+        addi.l  #1, d3
+        cmp.l   #2, d3
+        blt     DRAW_ROWS
+        
         add.l   #16, sp                 ; clearing the image data parameters
         
         move.b  $9,d0
@@ -81,7 +71,7 @@ START   ORG     $1000
 * Subroutine : Draws the specified clipping rectangle
 * Parameteres: (LONG) image-data-offset, (LONG) bits-per-pixel, (LONG) image-height, (LONG) bytes-per-row,
 *              (LONG) top-left-x, (LONG) top-left-y, (LONG) bottom-right-x, (LONG) bottom-right-y (order to push onto stack)
-*              68(sp), 64(sp), 60(sp), 56(sp), 52(sp), 48(sp), 44(sp), 40(sp)
+*              [68(sp), 64(sp), 60(sp), 56(sp), 52(sp), 48(sp), 44(sp), 40(sp)]
 *-------------------
 *-------------------
 * a0 : address of image data
@@ -96,7 +86,7 @@ START   ORG     $1000
 *-------------------
 SR_DRAW_CLIP_RECTANGLE:
 
-        movem.l ALL_REGS, -(sp)         ; store the register values in stack
+        movem.l ALL_REGS, -(sp)         ; saving the values of all the registers to be used
         
         move.l  68(sp), a0              ; image data offset
         
@@ -155,7 +145,7 @@ SR_DRAW_CLIP_RECTANGLE:
         cmp.l   40(sp), d2
         blt     CONTINUE_ROW
 
-        movem.l (sp)+, ALL_REGS
+        movem.l (sp)+, ALL_REGS         ; reverting value of all used registers
         RTS
 
         
