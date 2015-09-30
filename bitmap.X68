@@ -3,11 +3,33 @@
 * Written by    : Nihav Jain
 * Date Created  : 09/26/2015
 * Description   : Display the specified part of a bitmap
-* Bitmap Type   : True color, 24 bit color, no compression
+* Bitmap Type   : True color, 24 bit, no compression
 *-----------------------------------------------------------
 
+ALL_REGS            REG     D0-D7/A0
+        
+*-------------------
+* MAIN
+*-------------------
 START   ORG     $1000
+        
+        move.l  #TOP_LEFT_X, -(sp)
+        move.l  #TOP_LEFT_Y, -(sp)
+        move.l  #BOTTOM_RIGHT_X, -(sp)
+        move.l  #BOTTOM_RIGHT_Y, -(sp)
+        JSR     SR_DRAW_CLIP_RECTANGLE
+        add.l   #16, sp
 
+        move.b  $9,d0
+        TRAP    #15
+
+        STOP #$F000
+        
+
+*-------------------
+* Subroutine : Draws the specified clipping rectangle
+* Parameteres: (LONG) top-left-x, (LONG) top-left-y, (LONG) bottom-right-x, (LONG) bottom-right-y (order to push onto stack) 
+*-------------------
 *-------------------
 * a0 : address of image data
 * d1 : trap code requirements
@@ -18,14 +40,17 @@ START   ORG     $1000
 * d6 : pixel offset
 * d7 : offset of the number of bytes in a row
 *-------------------
+SR_DRAW_CLIP_RECTANGLE:
+
+        movem.l ALL_REGS, -(sp)         ; store the register values in stack
 
         move.l  ImageDataOffset, d5     ; precondition for byte swapping subroutine
         JSR     SR_SWAP_LONG
         lea     BitmapData, a0
         adda.l  d5, a0                  ; adding image data offset to bitmap data start address, a0 now points to the image data
         
-        move.l  #START_X, d3
-        move.l  #START_Y, d2
+        move.l  #TOP_LEFT_X, d3
+        move.l  #TOP_LEFT_Y, d2
 
         move.l  BitsPerPixel, d5
         JSR     SR_SWAP_LONG
@@ -40,7 +65,7 @@ START   ORG     $1000
     * i.e. the last row of data corresponds to the first row of the actual image
     * where Row[y] = (ImageHeight - y - 1) // for Row[0...ImageHeight-1]
     *-------------------
-        subi.l  #START_Y, d2
+        subi.l  #TOP_LEFT_Y, d2
         subi.l  #1, d2
         
         move.l  ImageWidth, d5
@@ -62,9 +87,9 @@ START   ORG     $1000
         mulu    d2, d4                  ; y offset (row offset)
         move.l  d4, d6      
         add.l   d7, d6                  ; offset (in bytes) of pixel to be drawn from the image data
-        move.l  #START_Y, d2
+        move.l  #TOP_LEFT_Y, d2
 
-CONTINUE_ROW:
+    CONTINUE_ROW:
         clr.l   d1
         
         move.b  (a0, d6.l), d1          ; #$000000BB
@@ -83,21 +108,21 @@ CONTINUE_ROW:
         addi.l  #1, d3                  ; increment X coordinate
         addi.l  #3, d6
         
-        cmp.l   #END_X, d3
+        cmp.l   #BOTTOM_RIGHT_X, d3
         blt     CONTINUE_ROW
         
         sub.l   d5, d4                  ; update row pointer to to previous row (current = current - NumBytesPerRow)
         move.l  d4, d6                  
         add.l   d7, d6
-        move.l  #START_X, d3            ; reset X coordinate
+        move.l  #TOP_LEFT_X, d3         ; reset X coordinate
         addi.l  #1, d2
-        cmp.l   #END_Y, d2
+        cmp.l   #BOTTOM_RIGHT_Y, d2
         blt     CONTINUE_ROW
+
+        movem.l (sp)+, ALL_REGS
+        RTS
+
         
-        move.b  $9,d0
-        TRAP #15
-        
-        STOP #$F000
 *-------------------
 * Subroutine: Swaps the bytes of the lower word in d5
 * Uses      : d5, d6 
@@ -110,6 +135,7 @@ SR_SWAP_WORD:
         or.w    d6, d5
         RTS
         
+        
 *-------------------
 * Subroutine: Swaps the bytes of the long word in d5
 * Uses      : d5, d6 
@@ -120,15 +146,18 @@ SR_SWAP_LONG:
         JSR     SR_SWAP_WORD
         RTS
 
+        
+*----------------------------------------------------------*
+*----------------------------------------------------------*
+
+
 *-------------------
-* Coordinates of the top-left corner, width, height of the bitmap rectangle to be drawn
+* Coordinates of the top-left and bottom-right of the clipping rectangle to be drawn
 *-------------------
-START_X             EQU     0
-START_Y             EQU     0
-WIDTH_TO_DRAW       EQU     120
-HEIGHT_TO_DRAW      EQU     120
-END_X               EQU     (START_X+WIDTH_TO_DRAW)
-END_Y               EQU     (START_Y+HEIGHT_TO_DRAW)
+TOP_LEFT_X          EQU     0
+TOP_LEFT_Y          EQU     0
+BOTTOM_RIGHT_X      EQU     100
+BOTTOM_RIGHT_Y      EQU     100
 
 *-------------------
 * Trap codes
@@ -141,7 +170,8 @@ CMD_CLEAR_SCREEN    EQU     11
 *-------------------
 * Bitmap file descriptors
 *-------------------
-BitmapData          INCBIN  "MultiColor_120x120.bmp"
+BitmapData          INCBIN  "me.bmp"
+*BitmapData          INCBIN  "MultiColor_120x120.bmp"
 ImageDataOffset     EQU     (BitmapData+10)      ; LONG
 ImageWidth          EQU     (ImageDataOffset+8)  ; LONG
 ImageHeight         EQU     (ImageWidth+4)       ; LONG
@@ -153,6 +183,9 @@ NumOfColors         EQU     (ImageSize+12)       ; LONG
         
 
         
+
+
+
 
 
 
