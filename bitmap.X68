@@ -15,29 +15,29 @@ START   ORG     $1000
         
         move.l  #0, -(sp)
         move.l  #0, -(sp)
-        move.l  #55, -(sp)
-        move.l  #55, -(sp)
+        move.l  #160, -(sp)
+        move.l  #120, -(sp)
         JSR     SR_DRAW_CLIP_RECTANGLE
         add.l   #16, sp
 
-        move.l  #55, -(sp)
+        move.l  #160, -(sp)
         move.l  #0, -(sp)
-        move.l  #110, -(sp)
-        move.l  #55, -(sp)
+        move.l  #320, -(sp)
+        move.l  #120, -(sp)
         JSR     SR_DRAW_CLIP_RECTANGLE
         add.l   #16, sp
 
         move.l  #0, -(sp)
-        move.l  #55, -(sp)
-        move.l  #55, -(sp)
-        move.l  #110, -(sp)
+        move.l  #120, -(sp)
+        move.l  #160, -(sp)
+        move.l  #240, -(sp)
         JSR     SR_DRAW_CLIP_RECTANGLE
         add.l   #16, sp
 
-        move.l  #55, -(sp)
-        move.l  #55, -(sp)
-        move.l  #110, -(sp)
-        move.l  #110, -(sp)
+        move.l  #160, -(sp)
+        move.l  #120, -(sp)
+        move.l  #320, -(sp)
+        move.l  #240, -(sp)
         JSR     SR_DRAW_CLIP_RECTANGLE
         add.l   #16, sp
         move.b  $9,d0
@@ -192,8 +192,7 @@ CMD_CLEAR_SCREEN    EQU     11
 *-------------------
 * Bitmap file descriptors
 *-------------------
-BitmapData          INCBIN  "me.bmp"
-*BitmapData          INCBIN  "MultiColor_120x120.bmp"
+BitmapData          INCBIN  "tiger.bmp"
 ImageDataOffset     EQU     (BitmapData+10)      ; LONG
 ImageWidth          EQU     (ImageDataOffset+8)  ; LONG
 ImageHeight         EQU     (ImageWidth+4)       ; LONG
