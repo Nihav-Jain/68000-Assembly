@@ -13,54 +13,33 @@ ALL_REGS            REG     D0-D7/A0
 *-------------------
 START   ORG     $1000
         
-        move.l  ImageDataOffset, d5     ; precondition for byte swapping subroutine
-        JSR     SR_SWAP_LONG
-        lea     BitmapData, a0
-        adda.l  d5, a0                  ; adding image data offset to bitmap data start address, a0 now points to the image data
-        move.l  a0, -(sp)
-        
-        move.l  BitsPerPixel, d5
-        JSR     SR_SWAP_LONG
-        move.l  d5, d7
-        move.l  d5, -(sp)               ; required for calculatiung the number of garbage bytes at the end of each row
-        
-        move.l  ImageHeight, d5
-        JSR     SR_SWAP_LONG
-        move.l  d5, d4
-        move.l  d5, -(sp)
-        
-    *-------------------
-    * BMP image data  have garbage bytes at the end of each row
-    * Number of bytes per row (incl. garbage) = Math.floor((BitsPerPixel*ImageWidth + 31)/32) * 4
-    *-------------------
-        move.l  ImageWidth, d5
-        JSR     SR_SWAP_LONG        
-        mulu    d5, d7
-        addi.l  #31, d7
-        divu    #32, d7
-        mulu    #4, d7
-        move.l  d7, -(sp)
-        
-        move.l  #0, d3
-    DRAW_ROWS:
-        move.l  d3, d2
-    NEXT_ALTERNATE_ROW:
         move.l  #0, -(sp)
-        move.l  d2, -(sp)
-        move.l  d5, -(sp)
-        move.l  d2, -(sp)
+        move.l  #0, -(sp)
+        move.l  #160, -(sp)
+        move.l  #120, -(sp)
         JSR     SR_DRAW_CLIP_RECTANGLE
         add.l   #16, sp
-        addi.l  #2, d2
-        cmp.l   d4, d2
-        blt     NEXT_ALTERNATE_ROW
-        
-        addi.l  #1, d3
-        cmp.l   #2, d3
-        blt     DRAW_ROWS
-        
-        add.l   #16, sp                 ; clearing the image data parameters
-        
+
+        move.l  #160, -(sp)
+        move.l  #0, -(sp)
+        move.l  #320, -(sp)
+        move.l  #120, -(sp)
+        JSR     SR_DRAW_CLIP_RECTANGLE
+        add.l   #16, sp
+
+        move.l  #0, -(sp)
+        move.l  #120, -(sp)
+        move.l  #160, -(sp)
+        move.l  #240, -(sp)
+        JSR     SR_DRAW_CLIP_RECTANGLE
+        add.l   #16, sp
+
+        move.l  #160, -(sp)
+        move.l  #120, -(sp)
+        move.l  #320, -(sp)
+        move.l  #240, -(sp)
+        JSR     SR_DRAW_CLIP_RECTANGLE
+        add.l   #16, sp
         move.b  $9,d0
         TRAP    #15
 
@@ -69,9 +48,8 @@ START   ORG     $1000
 
 *-------------------
 * Subroutine : Draws the specified clipping rectangle
-* Parameteres: (LONG) image-data-offset, (LONG) bits-per-pixel, (LONG) image-height, (LONG) bytes-per-row,
-*              (LONG) top-left-x, (LONG) top-left-y, (LONG) bottom-right-x, (LONG) bottom-right-y (order to push onto stack)
-*              [68(sp), 64(sp), 60(sp), 56(sp), 52(sp), 48(sp), 44(sp), 40(sp)]
+* Parameteres: (LONG) top-left-x, (LONG) top-left-y, (LONG) bottom-right-x, (LONG) bottom-right-y (order to push onto stack)
+*              52(sp), 48(sp), 44(sp), 40(sp)
 *-------------------
 *-------------------
 * a0 : address of image data
@@ -86,16 +64,24 @@ START   ORG     $1000
 *-------------------
 SR_DRAW_CLIP_RECTANGLE:
 
-        movem.l ALL_REGS, -(sp)         ; saving the values of all the registers to be used
-        
-        move.l  68(sp), a0              ; image data offset
+        movem.l ALL_REGS, -(sp)         ; store the register values in stack
+
+
+        move.l  ImageDataOffset, d5     ; precondition for byte swapping subroutine
+        JSR     SR_SWAP_LONG
+        lea     BitmapData, a0
+        adda.l  d5, a0                  ; adding image data offset to bitmap data start address, a0 now points to the image data
         
         move.l  52(sp), d3              ; top-left-x to d3
         move.l  48(sp), d2              ; top-left-y to d2
+
+        move.l  BitsPerPixel, d5
+        JSR     SR_SWAP_LONG
+        move.l  d5, d7                  ; required for calculatiung the number of garbage bytes at the end of each row
         
-        move.l  64(sp), d7              ; bits per pixel
-        
-        move.l  60(sp), d2              ; image height
+        move.l  ImageHeight, d5
+        JSR     SR_SWAP_LONG
+        move.l  d5, d2
         
     *-------------------
     * Image data in BMP is inverted 
@@ -105,10 +91,23 @@ SR_DRAW_CLIP_RECTANGLE:
         sub.l   48(sp), d2
         subi.l  #1, d2
         
-        move.l  56(sp), d5              ; number of bytes per row
+        move.l  ImageWidth, d5
+        JSR     SR_SWAP_LONG
+        
+    *-------------------
+    * BMP image data  have garbage bytes at the end of each row
+    * Number of bytes per row (incl. garbage) = Math.floor((BitsPerPixel*ImageWidth + 31)/32) * 4
+    *-------------------
+        mulu    d5, d7
+        addi.l  #31, d7
+        lsr.l   #5, d7
+        lsl.l   #2, d7
+        move.l  d7, d5
         
         move.l  d3, d7
-        mulu    #3, d7                  ; x (column) offset (in bytes) (3 corresponds to 24bits per pixel)
+        add.l   d3, d7
+        add.l   d3, d7
+        
         move.l  d5, d4
         mulu    d2, d4                  ; y offset (row offset)
         move.l  d4, d6      
@@ -145,7 +144,7 @@ SR_DRAW_CLIP_RECTANGLE:
         cmp.l   40(sp), d2
         blt     CONTINUE_ROW
 
-        movem.l (sp)+, ALL_REGS         ; reverting value of all used registers
+        movem.l (sp)+, ALL_REGS
         RTS
 
         
@@ -154,11 +153,13 @@ SR_DRAW_CLIP_RECTANGLE:
 * Uses      : d5, d6 
 *-------------------
 SR_SWAP_WORD:
+        movem.l d6, -(sp)
         clr.w   d6
         move.b  d5, d6
         lsr.w   #8, d5
         lsl.w   #8, d6
         or.w    d6, d5
+        movem.l (sp)+, d6
         RTS
         
         
