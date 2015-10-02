@@ -66,8 +66,11 @@ SR_DRAW_CLIP_RECTANGLE:
 
         movem.l ALL_REGS, -(sp)         ; store the register values in stack
 
-
-        move.l  ImageDataOffset, d5     ; precondition for byte swapping subroutine
+    *-------------------
+    * Reading the bitmap file header
+    * Note: Data in the file header is stored in little endian, thus it needs to be swapped to be used in 68k which is a big endian procesor
+    *-------------------
+        move.l  ImageDataOffset, d5
         JSR     SR_SWAP_LONG
         lea     BitmapData, a0
         adda.l  d5, a0                  ; adding image data offset to bitmap data start address, a0 now points to the image data
@@ -91,17 +94,16 @@ SR_DRAW_CLIP_RECTANGLE:
         sub.l   48(sp), d2
         subi.l  #1, d2
         
-        move.l  ImageWidth, d5
-        JSR     SR_SWAP_LONG
-        
     *-------------------
     * BMP image data  have garbage bytes at the end of each row
     * Number of bytes per row (incl. garbage) = Math.floor((BitsPerPixel*ImageWidth + 31)/32) * 4
     *-------------------
+        move.l  ImageWidth, d5
+        JSR     SR_SWAP_LONG        
         mulu    d5, d7
         addi.l  #31, d7
-        lsr.l   #5, d7
-        lsl.l   #2, d7
+        lsr.l   #5, d7                  ; d7 = d7 / 32
+        lsl.l   #2, d7                  ; d7 = d7 * 4
         move.l  d7, d5
         
         move.l  d3, d7
